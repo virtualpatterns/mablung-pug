@@ -1,0 +1,9 @@
+{
+  "ignoreMatch": [
+    "buffer",
+    "events",
+    "stream-browserify",
+    "util",
+    "virtual-dom"
+  ]
+}

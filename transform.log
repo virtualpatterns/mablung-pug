@@ -1,0 +1,11 @@
+Usage: transform [options] [command]
+
+Options:
+  -V, --version                                        output the version number
+  -h, --help                                           display help for command
+
+Commands:
+  create-module [options] <source-path> [target-path]  Create a module that returns nodes
+  help [command]                                       display help for command
+ChildProcess.on('disconnect', this.__onDisconnect = () => { ... })
+ChildProcess.on('exit', this.__onExit = (0, null) => { ... })

@@ -1,0 +1,24 @@
+{
+  "env": {
+    "commonjs": {
+      "plugins": [],
+      "presets": [
+        [
+          "@babel/preset-env",
+          {
+            "targets": { 
+              "node": "current" 
+            }
+          }
+        ]
+      ],
+      "sourceType": "unambiguous"
+    },
+    "esmodule": {
+      "plugins": [],
+      "presets": [],
+      "retainLines": true,
+      "sourceType": "unambiguous"
+    },
+  }
+}
