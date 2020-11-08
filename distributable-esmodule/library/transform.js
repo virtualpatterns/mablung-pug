@@ -1,6 +1,8 @@
 import { createRequire as _createRequire } from "module";import _URL from "url";import DefaultBabel, * as ModuleBabel from '@babel/core';
+import DefaultLuxon, * as ModuleLuxon from 'luxon';
 import ESLint from 'eslint';
 import FileSystem from 'fs-extra';
+import Filter from 'pug-filters';
 import _Format from 'prettier';
 import Is from '@pwn/is';
 import JSON5 from 'json5';
@@ -17,6 +19,7 @@ import BlockNode from './node/block-node.js';
 
 import { UnrecognizedMessageTransformError } from './error/unrecognized-message-transform-error.js';
 
+const { DateTime } = DefaultLuxon || ModuleLuxon;
 const { 'ESLint': Lint } = ESLint;
 const { 'format': Format } = _Format;
 const Babel = DefaultBabel || ModuleBabel;
@@ -27,10 +30,16 @@ class Transform {
 
   static getAstFromContent(content, option = { 'path': '(unknown)' }) {
 
-    let lexerOutput = Lex(content, { 'filename': option.path });
-    let parserOutput = Parse(lexerOutput, { 'filename': option.path });
-    let loaderOutput = Load(parserOutput, { 'lex': Lex, 'parse': Parse });
-    let ast = Link(loaderOutput);
+    let ast = null;
+    let token = null;
+
+    token = Lex(content, { 'filename': option.path });
+    ast = Parse(token, { 'filename': option.path });
+    ast = Load(ast, { 'lex': Lex, 'parse': Parse });
+
+    Filter.handleFilters(ast);
+
+    ast = Link(ast);
 
     return ast;
 
@@ -96,7 +105,8 @@ class Transform {
 
     let source = null;
     source = await this.getFunctionSourceFromContent(content, { 'path': option.path });
-    source = ` // Created by ${Package.name} v${Package.version}
+    source = `  // Created by ${Package.name} v${Package.version}
+                // Created at ${DateTime.utc().toFormat('yyyy-LL-dd HH:mm:ss')}
                 // Path = ${option.path === '(unknown)' ? option.path : `'${Path.relative('', option.path)}'`}
                 import { Utility } from '${option.utility}'
                 ${source}

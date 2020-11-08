@@ -7,9 +7,13 @@ exports.Transform = void 0;
 
 var ModuleBabel = _interopRequireWildcard(require("@babel/core"));
 
+var ModuleLuxon = _interopRequireWildcard(require("luxon"));
+
 var _eslint = _interopRequireDefault(require("eslint"));
 
 var _fsExtra = _interopRequireDefault(require("fs-extra"));
+
+var _pugFilters = _interopRequireDefault(require("pug-filters"));
 
 var _prettier = _interopRequireDefault(require("prettier"));
 
@@ -44,6 +48,9 @@ function _getRequireWildcardCache() { if (typeof WeakMap !== "function") return 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
 
 const {
+  DateTime
+} = ModuleLuxon.default || ModuleLuxon;
+const {
   'ESLint': Lint
 } = _eslint.default;
 const {
@@ -57,17 +64,22 @@ class Transform {
   static getAstFromContent(content, option = {
     'path': '(unknown)'
   }) {
-    let lexerOutput = (0, _pugLexer.default)(content, {
+    let ast = null;
+    let token = null;
+    token = (0, _pugLexer.default)(content, {
       'filename': option.path
     });
-    let parserOutput = (0, _pugParser.default)(lexerOutput, {
+    ast = (0, _pugParser.default)(token, {
       'filename': option.path
     });
-    let loaderOutput = (0, _pugLoad.default)(parserOutput, {
+    ast = (0, _pugLoad.default)(ast, {
       'lex': _pugLexer.default,
       'parse': _pugParser.default
     });
-    let ast = (0, _pugLinker.default)(loaderOutput);
+
+    _pugFilters.default.handleFilters(ast);
+
+    ast = (0, _pugLinker.default)(ast);
     return ast;
   }
 
@@ -126,7 +138,8 @@ class Transform {
     source = await this.getFunctionSourceFromContent(content, {
       'path': option.path
     });
-    source = ` // Created by ${_package.Package.name} v${_package.Package.version}
+    source = `  // Created by ${_package.Package.name} v${_package.Package.version}
+                // Created at ${DateTime.utc().toFormat('yyyy-LL-dd HH:mm:ss')}
                 // Path = ${option.path === '(unknown)' ? option.path : `'${_path.default.relative('', option.path)}'`}
                 import { Utility } from '${option.utility}'
                 ${source}

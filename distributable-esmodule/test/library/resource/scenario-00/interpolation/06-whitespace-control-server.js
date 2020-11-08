@@ -1,4 +1,5 @@
-// Created by @virtualpatterns/mablung-pug v0.0.1-17
+// Created by @virtualpatterns/mablung-pug v0.0.1-18
+// Created at 2020-11-08 06:13:18
 // Path = 'distributable-esmodule/test/library/resource/scenario-00/interpolation/06-whitespace-control.pug'
 import { Utility } from '../../../../../library/utility.js'
 function __getNode(__local = {}, __utility = {}) {

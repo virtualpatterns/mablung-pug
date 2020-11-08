@@ -29,7 +29,7 @@ const FilePath = __filename;
 const FolderPath = _path.default.dirname(FilePath);
 
 const Require = require;
-[Require.resolve('./resource/scenario-01/attribute/03-multiline-attribute.pug'), Require.resolve('./resource/scenario-01/comment/04-conditional-comment.pug'), Require.resolve('./resource/scenario-01/include/02-filtered-text.pug')].forEach(path => {
+[Require.resolve('./resource/scenario-01/attribute/03-multiline-attribute.pug'), Require.resolve('./resource/scenario-01/comment/04-conditional-comment.pug')].forEach(path => {
   (0, _ava.default)(`'${_path.default.relative(`${FolderPath}/resource/scenario-01`, path)}' browser is equal to server is not equal to reference`, async test => {
     let scenario = await _scenario.Scenario.createScenarioFromFile(path);
     let [referenceHtml, serverHtml, browserHtml] = await Promise.all([scenario.getReferenceHtml(), scenario.getServerHtml(), scenario.getBrowserHtml()]);

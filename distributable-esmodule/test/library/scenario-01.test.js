@@ -12,8 +12,7 @@ const Require = _createRequire(import.meta.url);
 
 [
 Require.resolve('./resource/scenario-01/attribute/03-multiline-attribute.pug'),
-Require.resolve('./resource/scenario-01/comment/04-conditional-comment.pug'),
-Require.resolve('./resource/scenario-01/include/02-filtered-text.pug')].
+Require.resolve('./resource/scenario-01/comment/04-conditional-comment.pug')].
 forEach(path => {
 
   Test(`'${Path.relative(`${FolderPath}/resource/scenario-01`, path)}' browser is equal to server is not equal to reference`, async test => {

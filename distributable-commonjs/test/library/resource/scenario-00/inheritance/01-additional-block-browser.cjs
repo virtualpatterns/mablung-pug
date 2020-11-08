@@ -7,7 +7,8 @@ exports.default = _default
 
 var _utility = require('../../../../../library/utility.cjs')
 
-// Created by @virtualpatterns/mablung-pug v0.0.1-17
+// Created by @virtualpatterns/mablung-pug v0.0.1-18
+// Created at 2020-11-08 06:13:16
 // Path = 'distributable-commonjs/test/library/resource/scenario-00/inheritance/01-additional-block.pug'
 function __getNode(__local = {}, __utility = {}) {
   const { title } = __local
