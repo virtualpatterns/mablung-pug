@@ -1,4 +1,4 @@
-// Created by @virtualpatterns/mablung-pug v0.0.1-16
+// Created by @virtualpatterns/mablung-pug v0.0.1-17
 // Path = 'distributable-esmodule/test/library/resource/transform-01/folder/01-content.pug'
 import { Utility } from '@virtualpatterns/mablung-pug/utility'
 function __getNode(__local = {}, __utility = {}) {

@@ -1,4 +1,4 @@
-// Created by @virtualpatterns/mablung-pug v0.0.1-16
+// Created by @virtualpatterns/mablung-pug v0.0.1-17
 // Path = 'distributable-esmodule/test/library/resource/scenario-01/include/02-filtered-text.pug'
 import { Utility } from '../../../../../library/utility.js'
 function __getNode(__local = {}, __utility = {}) {
