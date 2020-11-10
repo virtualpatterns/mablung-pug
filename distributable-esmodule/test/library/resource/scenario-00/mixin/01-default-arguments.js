@@ -1,5 +1,5 @@
 // Created by @virtualpatterns/mablung-pug v0.0.1-18
-// Created at 2020-11-10 05:14:07
+// Created at 2020-11-10 05:31:30
 // Path = 'distributable-esmodule/test/library/resource/scenario-00/mixin/01-default-arguments.pug'
 import { Utility } from '../../../../../library/utility.js'
 function __getNode(__local = {}, __utility = {}) {

@@ -8,7 +8,7 @@ exports.default = _default
 var _utility = require('../../../library/utility.cjs')
 
 // Created by @virtualpatterns/mablung-pug v0.0.1-18
-// Created at 2020-11-10 05:14:03
+// Created at 2020-11-10 05:31:25
 // Path = 'distributable-commonjs/test/command/resource/transform-00.pug'
 function __getNode(__local = {}, __utility = {}) {
   function __getNode(__utility = {}) {

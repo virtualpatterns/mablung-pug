@@ -1,5 +1,5 @@
 // Created by @virtualpatterns/mablung-pug v0.0.1-18
-// Created at 2020-11-10 05:14:07
+// Created at 2020-11-10 05:31:30
 // Path = 'distributable-esmodule/test/library/resource/transform-01/sub-folder/folder/02-content.pug'
 import { Utility } from '@virtualpatterns/mablung-pug/utility'
 function __getNode(__local = {}, __utility = {}) {
