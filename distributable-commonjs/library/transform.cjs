@@ -208,25 +208,39 @@ class Transform {
     let sourceInformation = await _fsExtra.default.stat(sourcePath);
 
     if (sourceInformation.isDirectory()) {
-      let includePattern = ['*.pug'];
-      let excludePattern = ['*.skip.pug'];
+      return (await this._createModuleFromPath(sourcePath, targetPath, option)).flat();
+    } else {
+      return this._createModuleFromPath(sourcePath, targetPath, option);
+    }
+  }
+
+  static async _createModuleFromPath(sourcePath, targetPath, option) {
+    //     console.log(`Transform._createModuleFromPath(
+    //   '${Path.relative('', sourcePath)}', 
+    //   '${Path.relative('', targetPath)}', 
+    //   option
+    // )`)
+    let sourceInformation = await _fsExtra.default.stat(sourcePath); // console.log(`sourceInformation.mtimeMs = ${sourceInformation.mtimeMs}`)
+
+    if (sourceInformation.isDirectory()) {
+      let includePattern = ['*.pug']; // let excludePattern = [ '*.skip.pug' ]
+
       let item = await _fsExtra.default.readdir(sourcePath, {
         'encoding': 'utf-8',
         'withFileTypes': true
       });
-      let createModule = [];
-      createModule = createModule.concat(item.filter(item => item.isDirectory()).map(folder => this.createModuleFromPath(`${sourcePath}/${folder.name}`, `${targetPath}/${folder.name}`, option)));
-      createModule = createModule.concat(item.filter(item => item.isFile()).filter(file => includePattern.reduce((isMatch, pattern) => isMatch ? isMatch : (0, _minimatch.default)(file.name, pattern), false)).filter(file => !excludePattern.reduce((isMatch, pattern) => isMatch ? isMatch : (0, _minimatch.default)(file.name, pattern), false)).map(file => this.createModuleFromPath(`${sourcePath}/${file.name}`, `${targetPath}/${_path.default.basename(file.name, _path.default.extname(file.name))}${_path.default.extname(FilePath)}`, option)));
-      return Promise.all(createModule);
+      let promise = [];
+      promise = promise.concat(item.filter(item => item.isDirectory()).map(folder => this.createModuleFromPath(`${sourcePath}/${folder.name}`, `${targetPath}/${folder.name}`, option)));
+      promise = promise.concat(item.filter(item => item.isFile()).filter(file => includePattern.reduce((isMatch, pattern) => isMatch ? isMatch : (0, _minimatch.default)(file.name, pattern), false)) // .filter((file) => !excludePattern.reduce((isMatch, pattern) => isMatch ? isMatch : Match(file.name, pattern), false))
+      .map(file => this.createModuleFromPath(`${sourcePath}/${file.name}`, `${targetPath}/${_path.default.basename(file.name, _path.default.extname(file.name))}${_path.default.extname(FilePath)}`, option)));
+      return Promise.all(promise);
     } else {
       let isCreated = false;
 
       if (await _fsExtra.default.pathExists(targetPath)) {
-        let targetInformation = await _fsExtra.default.stat(targetPath); // console.log(`Existing '${Path.relative('', targetPath)}' ...`)
-        // console.log(`Source ${sourceInformation.mtime}`)
-        // console.log(`Target ${targetInformation.mtime}`)
+        let targetInformation = await _fsExtra.default.stat(targetPath); // console.log(`targetInformation.mtimeMs = ${targetInformation.mtimeMs}`)
 
-        if (sourceInformation.mtime >= targetInformation.mtime) {
+        if (sourceInformation.mtimeMs >= targetInformation.mtimeMs) {
           isCreated = true;
         }
       } else {
@@ -236,16 +250,15 @@ class Transform {
       if (isCreated) {
         let source = null;
         source = await this.getModuleSourceFromPath(sourcePath, option);
-        source = await this.formatSource(source, _path.default.extname(targetPath).toLowerCase() === '.cjs' ? 'commonjs' : 'esmodule'); // console.log(`Creating '${Path.relative('', targetPath)}' ...`)
-
+        source = await this.formatSource(source, _path.default.extname(targetPath).toLowerCase() === '.cjs' ? 'commonjs' : 'esmodule');
         await _fsExtra.default.ensureDir(_path.default.dirname(targetPath));
-        return _fsExtra.default.writeFile(targetPath, source, {
+        await _fsExtra.default.writeFile(targetPath, source, {
           'encoding': option.encoding,
           'flag': option.flag
         });
-      } else {
-        return Promise.resolve();
       }
+
+      return targetPath;
     }
   }
 

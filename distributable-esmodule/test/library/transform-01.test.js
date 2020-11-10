@@ -19,29 +19,27 @@ Test('createModuleFromPath(sourcePath, targetPath, option) using file', async te
   let targetPath = `${FolderPath}/resource/transform-01/file/00-content${Path.extname(FilePath)}`;
 
   // succeeds writing target
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath));
+  // await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath))
+  test.is(await Transform.createModuleFromPath(sourcePath), targetPath);
   test.true(await FileSystem.pathExists(targetPath));
 
   // succeeds (but writes nothing) with no change to source
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath));
+  // await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath))
+  test.is(await Transform.createModuleFromPath(sourcePath), targetPath);
 
   // fails to overwrite as 'flag' defaults to 'wx' with changed source 
   await Touch(sourcePath);
   await test.throwsAsync(Transform.createModuleFromPath(sourcePath), { 'code': 'EEXIST' });
 
   // succeeds to overwrite as 'flag' is 'w' with changed source 
-  let option = { 'flag': 'w' };
-
   await Touch(sourcePath);
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath, targetPath, option));
+  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath, undefined, { 'flag': 'w' }));
 
   // succeeds to overwrite as 'flag' is 'w' with changed source, utility import is defined
-  let utility = Path.relative(Path.dirname(sourcePath), Require.resolve('../../library/utility.js'));
-
-  option = { 'flag': 'w', 'utility': utility };
+  let utilityPath = Path.relative(Path.dirname(sourcePath), Require.resolve(`../../library/utility${Path.extname(FilePath)}`));
 
   await Touch(sourcePath);
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath, targetPath, option));
+  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath, undefined, { 'flag': 'w', 'utility': utilityPath }));
 
   let content = await FileSystem.readFile(targetPath, { 'encoding': 'utf-8' });
   let ast = Parse(content, { 'sourceType': 'module' });
@@ -56,7 +54,7 @@ Test('createModuleFromPath(sourcePath, targetPath, option) using file', async te
       path.node.arguments[0].type === 'StringLiteral') {
 
         // test.log(`const Utility = require('${path.node.arguments[0].value}')`)
-        test.is(path.node.arguments[0].value, utility);
+        test.is(path.node.arguments[0].value, utilityPath);
 
         existsUtility = true;
 
@@ -66,7 +64,7 @@ Test('createModuleFromPath(sourcePath, targetPath, option) using file', async te
     ImportDeclaration(path) {
 
       // test.log(`import Utility from '${path.node.source.value}'`)
-      test.is(path.node.source.value, utility);
+      test.is(path.node.source.value, utilityPath);
 
       existsUtility = true;
 
@@ -87,15 +85,19 @@ Test('createModuleFromPath(sourcePath, targetPath, option) using folder', async 
 
 
   // succeeds writing target
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath));
+  test.deepEqual(await Transform.createModuleFromPath(sourcePath), targetPath);
   targetPath.forEach(targetPath => test.true(FileSystem.pathExistsSync(targetPath)));
 
   // succeeds (but writes nothing) with no change to source
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath));
+  test.deepEqual(await Transform.createModuleFromPath(sourcePath), targetPath);
 
   // fails to overwrite as 'flag' defaults to 'wx' with changed source 
   await Touch(`${sourcePath}/02-content.pug`);
   await test.throwsAsync(Transform.createModuleFromPath(sourcePath), { 'code': 'EEXIST' });
+
+  // succeeds to overwrite as 'flag' is 'w' with changed source 
+  await Touch(`${sourcePath}/02-content.pug`);
+  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath, undefined, { 'flag': 'w' }));
 
 });
 
@@ -112,15 +114,21 @@ Test('createModuleFromPath(sourcePath, targetPath, option) using sub-folder', as
 
 
   // succeeds writing target
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath));
+  test.deepEqual(await Transform.createModuleFromPath(sourcePath), targetPath);
   targetPath.forEach(targetPath => test.true(FileSystem.pathExistsSync(targetPath)));
 
   // succeeds (but writes nothing) with no change to source
-  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath));
+  test.deepEqual(await Transform.createModuleFromPath(sourcePath), targetPath);
 
   // fails to overwrite as 'flag' defaults to 'wx' with changed source 
   await Touch(`${sourcePath}/folder/02-content.pug`);
+  await Touch(`${sourcePath}/02-content.pug`);
   await test.throwsAsync(Transform.createModuleFromPath(sourcePath), { 'code': 'EEXIST' });
+
+  // succeeds to overwrite as 'flag' is 'w' with changed source 
+  await Touch(`${sourcePath}/folder/02-content.pug`);
+  await Touch(`${sourcePath}/02-content.pug`);
+  await test.notThrowsAsync(Transform.createModuleFromPath(sourcePath, undefined, { 'flag': 'w' }));
 
 });
 //# sourceMappingURL=transform-01.test.js.map

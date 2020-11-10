@@ -6,4 +6,5 @@ export * from './library/error/unsupported-code-transform-error.js';
 export * from './library/error/unsupported-comment-transform-error.js';
 export * from './library/error/unsupported-doctype-transform-error.js';
 export * from './library/error/unsupported-tag-transform-error.js';
+export * from './test/library/scenario.js';
 //# sourceMappingURL=index.js.map

@@ -5,6 +5,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Scenario = void 0;
 
+var ModuleSemaphore = _interopRequireWildcard(require("await-semaphore"));
+
 var _puppeteer = _interopRequireDefault(require("puppeteer"));
 
 var ModuleBundle = _interopRequireWildcard(require("esbuild"));
@@ -39,11 +41,14 @@ const {
 const {
   document
 } = ModuleElement.default || ModuleElement;
+const {
+  Mutex
+} = ModuleSemaphore.default || ModuleSemaphore;
 const FilePath = __filename;
 const Require = require;
 
 class Scenario {
-  constructor(path, local = {}) {
+  constructor(path) {
     let modifierPattern = /\.(\w*?)[./]/gims;
     let modifier = [];
     let match = null;
@@ -53,79 +58,83 @@ class Scenario {
       modifierPattern.lastIndex--;
     }
 
+    let name = Scenario.getName(path);
+    let localPath = `${_path.default.dirname(path)}/${name}.json`;
+    let local = {};
+
+    if (_fsExtra.default.pathExistsSync(localPath)) {
+      local = _json.default.parse(_fsExtra.default.readFileSync(localPath, {
+        'encoding': 'utf-8'
+      }));
+    }
+
     this._path = path;
-    this._local = local;
     this._modifier = modifier;
+    this._name = name;
+    this._local = local;
+    this._lock = new Mutex();
   }
 
   get path() {
     return this._path;
   }
 
-  get local() {
-    return this._local;
-  }
-
   get modifier() {
     return this._modifier;
+  }
+
+  get name() {
+    return this._name;
+  }
+
+  get local() {
+    return this._local;
   }
 
   async getReferenceHtml() {
     let html = null;
     html = _pug.default.compileFile(this._path)(this._local);
     html = (0, _pretty.default)(html);
-    html = html.replace(/<(.*?) \/>/gim, '<$1>');
+    html = html.replace(/<(.*?) \/>/gms, '<$1>');
     return html;
   }
 
+  async createModule() {
+    return _index.Transform.createModuleFromPath(this._path, `${_path.default.dirname(this._path)}/${this._name}${_path.default.extname(FilePath)}`, {
+      'utility': _path.default.relative(_path.default.dirname(this._path), Require.resolve(`../../library/utility${_path.default.extname(FilePath)}`))
+    });
+  }
+
+  getNodeHtml(node) {
+    return node.map(node => _is.default.string(node) ? document.createTextNode(node).textContent : node.outerHTML).join('');
+  }
+
   async getServerHtml() {
-    let name = Scenario.getName(this._path);
-
-    let extension = _path.default.extname(FilePath);
-
-    let sourcePath = this._path;
-    let targetPath = `${_path.default.dirname(sourcePath)}/${name}-server${extension}`;
-
-    let utilityPath = _path.default.relative(_path.default.dirname(targetPath), Require.resolve(`../../library/utility${extension}`));
-
-    await _index.Transform.createModuleFromPath(sourcePath, targetPath, {
-      'utility': utilityPath
-    }); // __transformPath does ...
-    //   URL.pathToFileURL if the environment is ESModule
-    //   require.resolve if the environment is CommonJS
-
-    let module = await Promise.resolve(`${require.resolve(targetPath)}`).then(s => _interopRequireWildcard(require(s)));
-    let fn = module.default || module;
+    let modulePath = await this._lock.use(() => this.createModule());
+    let module = await Promise.resolve(`${modulePath}`).then(s => _interopRequireWildcard(require(s)));
+    let fn = module.default;
     let node = fn(this._local);
     let html = null;
-    html = node.map(node => _is.default.string(node) ? document.createTextNode(node).textContent : node.outerHTML);
-    html = html.join('');
+    html = this.getNodeHtml(node);
     html = (0, _pretty.default)(html);
     return html;
   }
 
-  async getBrowserHtml() {
-    let name = Scenario.getName(this._path);
-
-    let extension = _path.default.extname(FilePath);
-
-    let sourcePath = this._path;
-    let targetPath = `${_path.default.dirname(sourcePath)}/${name}-browser${extension}`;
-
-    let utilityPath = _path.default.relative(_path.default.dirname(targetPath), Require.resolve(`../../library/utility${extension}`));
-
-    await _index.Transform.createModuleFromPath(sourcePath, targetPath, {
-      'utility': utilityPath
-    });
+  async getSource(modulePath) {
     let source = null;
-    source = `  import ContentFn from './${_path.default.relative(_path.default.dirname(sourcePath), targetPath)}'
-                let local = ${JSON.stringify(this._local)}
-                let node = ContentFn(local)
+    source = ` import ContentFn from './${_path.default.relative(_path.default.dirname(modulePath), modulePath)}'
                 let div = document.querySelector('body div')
+                let node = ContentFn(${JSON.stringify(this._local)})
                 node.forEach((node) => div.appendChild(typeof node === 'string' ? document.createTextNode(node) : node))`;
     source = await _index.Transform.formatSource(source);
-    let preBundlePath = `${_path.default.dirname(sourcePath)}/${name}-browser-pre${extension}`;
-    let postBundlePath = `${_path.default.dirname(sourcePath)}/${name}-browser-post${extension}`;
+    return source;
+  }
+
+  async getBrowserHtml() {
+    let modulePath = await this._lock.use(() => this.createModule());
+    let source = await this.getSource(modulePath);
+    let preBundlePath = `${_path.default.dirname(modulePath)}/${_path.default.basename(modulePath, _path.default.extname(modulePath))}-pre-bundle${_path.default.extname(modulePath)}`;
+    let postBundlePath = `${_path.default.dirname(modulePath)}/${_path.default.basename(modulePath, _path.default.extname(modulePath))}-post-bundle${_path.default.extname(modulePath)}`;
     await _fsExtra.default.ensureDir(_path.default.dirname(preBundlePath));
     await _fsExtra.default.writeFile(preBundlePath, source, {
       'encoding': 'utf-8',
@@ -141,35 +150,11 @@ class Scenario {
       'outfile': postBundlePath,
       'minify': false,
       'bundle': true
-    }); // let host = '0.0.0.0'
-    // let port = Path.extname(FilePath) === '.cjs' ? 8080 : 8081
-    // Server.start({
-    //   'host': host,
-    //   'port': port,
-    //   'logLevel': 0,
-    //   'mount': [
-    //     [ '/', `${FolderPath}/www` ],
-    //     [ '/favicon.ico', `${FolderPath}/www/resource/application.ico` ]
-    //   ],
-    //   'open': false
-    // })
-    // try {
-
+    });
     let browser = await _puppeteer.default.launch(); // { 'devtools': true, 'headless': false })
 
     try {
-      let page = await browser.newPage(); // page.on('console', async (message) => {
-      //   switch (message.type().toLowerCase()) {
-      //     case 'log':
-      //       console.log(message.text())
-      //       break
-      //     case 'dir':
-      //       console.dir(await message.args()[0].jsonValue(), { 'depth': null })
-      //       break
-      //   }
-      // })
-      // await page.goto(`http://${host}:${port}/index.html`)
-
+      let page = await browser.newPage();
       let content = null;
       content = ` <!DOCTYPE html>
                   <html>
@@ -197,10 +182,7 @@ class Scenario {
       return html;
     } finally {
       await browser.close();
-    } // } finally {
-    //   Server.shutdown()
-    // }
-
+    }
   }
 
   static getName(name) {
@@ -211,29 +193,23 @@ class Scenario {
     }
   }
 
-  static createScenarioFromFolder(path, includePattern = ['*.pug'], excludePattern = ['*.skip.pug']) {
+  static createScenarioFromFolder(path) {
+    let includePattern = ['*.pug']; // let excludePattern = ['*.skip.pug']
+
     let item = _fsExtra.default.readdirSync(path, {
       'encoding': 'utf-8',
       'withFileTypes': true
     });
 
     let scenario = [];
-    scenario = scenario.concat(item.filter(item => item.isDirectory()).map(folder => this.createScenarioFromFolder(`${path}/${folder.name}`, includePattern, excludePattern)));
-    scenario = scenario.concat(item.filter(item => item.isFile()).filter(file => includePattern.reduce((isMatch, pattern) => isMatch ? isMatch : (0, _minimatch.default)(file.name, pattern), false)).filter(file => !excludePattern.reduce((isMatch, pattern) => isMatch ? isMatch : (0, _minimatch.default)(file.name, pattern), false)).map(file => this.createScenarioFromFile(`${path}/${file.name}`)));
+    scenario = scenario.concat(item.filter(item => item.isDirectory()).map(folder => this.createScenarioFromFolder(`${path}/${folder.name}`)));
+    scenario = scenario.concat(item.filter(item => item.isFile()).filter(file => includePattern.reduce((isMatch, pattern) => isMatch ? isMatch : (0, _minimatch.default)(file.name, pattern), false)) // .filter((file) => !excludePattern.reduce((isMatch, pattern) => isMatch ? isMatch : Match(file.name, pattern), false))
+    .map(file => this.createScenarioFromFile(`${path}/${file.name}`)));
     return scenario.flat();
   }
 
   static createScenarioFromFile(path) {
-    let localPath = `${_path.default.dirname(path)}/${this.getName(path)}-local.json`;
-    let local = {};
-
-    if (_fsExtra.default.pathExistsSync(localPath)) {
-      local = _json.default.parse(_fsExtra.default.readFileSync(localPath, {
-        'encoding': 'utf-8'
-      }));
-    }
-
-    return new Scenario(path, local);
+    return new Scenario(path);
   }
 
 }
