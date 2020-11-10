@@ -1,14 +1,21 @@
 import '@virtualpatterns/mablung-source-map-support/install'
-import h from 'hyperscript'
-import Utility from '../library/utility.js'
+// import Lex from 'pug-lexer'
+// import Load from 'pug-load'
+// import Parse from 'pug-parser'
+
+import { Transform } from '../index.js'
+
+const Require = __require
 
 async function main() {
 
   try {
- 
-    console.log(h('div', { 'class': 'element' }, [ 'hey' ]).outerHTML)
-    console.log(Utility.createNode('div', { 'class': 'element' }, [ 'hey' ]).outerHTML)
 
+    let ast = null
+    ast = await Transform.getAstFromPath(Require.resolve('./dunno-content.pug'))
+
+    console.dir(ast, { 'depth': null })
+        
   } catch (error) {
     console.error(error)
   }

@@ -1,6 +1,8 @@
 import DefaultBabel, * as ModuleBabel from '@babel/core'
+import DefaultLuxon, * as ModuleLuxon from 'luxon'
 import ESLint from 'eslint'
 import FileSystem from 'fs-extra'
+import Filter from 'pug-filters'
 import _Format from 'prettier'
 import Is from '@pwn/is'
 import JSON5 from 'json5'
@@ -17,6 +19,7 @@ import BlockNode from './node/block-node.js'
 
 import { UnrecognizedMessageTransformError } from './error/unrecognized-message-transform-error.js'
 
+const { DateTime } = DefaultLuxon || ModuleLuxon
 const { 'ESLint': Lint } = ESLint
 const { 'format': Format } = _Format
 const Babel = DefaultBabel || ModuleBabel
@@ -27,10 +30,16 @@ class Transform {
   
   static getAstFromContent(content, option = { 'path': '(unknown)' }) {
 
-    let lexerOutput = Lex(content, { 'filename': option.path })
-    let parserOutput = Parse(lexerOutput, { 'filename': option.path })
-    let loaderOutput = Load(parserOutput, { 'lex': Lex, 'parse': Parse })
-    let ast = Link(loaderOutput)
+    let ast = null
+    let token = null
+    
+    token = Lex(content, { 'filename': option.path })
+    ast = Parse(token, { 'filename': option.path })
+    ast = Load(ast, { 'lex': Lex, 'parse': Parse })
+
+    Filter.handleFilters(ast)
+
+    ast = Link(ast)
 
     return ast
 
@@ -96,7 +105,8 @@ class Transform {
 
     let source = null
     source = await this.getFunctionSourceFromContent(content, { 'path': option.path })
-    source =  ` // Created by ${Package.name} v${Package.version}
+    source = `  // Created by ${Package.name} v${Package.version}
+                // Created at ${DateTime.utc().toFormat('yyyy-LL-dd HH:mm:ss')}
                 // Path = ${option.path === '(unknown)' ? option.path : `'${Path.relative('', option.path)}'`}
                 import { Utility } from '${option.utility}'
                 ${source}
@@ -164,26 +174,44 @@ class Transform {
 
     let sourceInformation = await FileSystem.stat(sourcePath)
 
+    if (sourceInformation.isDirectory()) { 
+      return (await this._createModuleFromPath(sourcePath, targetPath, option)).flat()
+    } else {
+      return this._createModuleFromPath(sourcePath, targetPath, option)
+    }
+  
+  }
+
+  static async _createModuleFromPath(sourcePath, targetPath, option) {
+//     console.log(`Transform._createModuleFromPath(
+//   '${Path.relative('', sourcePath)}', 
+//   '${Path.relative('', targetPath)}', 
+//   option
+// )`)
+
+    let sourceInformation = await FileSystem.stat(sourcePath)
+    // console.log(`sourceInformation.mtimeMs = ${sourceInformation.mtimeMs}`)
+
     if (sourceInformation.isDirectory()) {
   
       let includePattern = [ '*.pug' ]
-      let excludePattern = [ '*.skip.pug' ]
+      // let excludePattern = [ '*.skip.pug' ]
 
       let item = await FileSystem.readdir(sourcePath, { 'encoding': 'utf-8', 'withFileTypes': true })
   
-      let createModule = []
+      let promise = []
   
-      createModule = createModule.concat(item
+      promise = promise.concat(item
         .filter((item) => item.isDirectory())
         .map((folder) => this.createModuleFromPath(`${sourcePath}/${folder.name}`, `${targetPath}/${folder.name}`, option)))
   
-      createModule = createModule.concat(item
+      promise = promise.concat(item
         .filter((item) => item.isFile())
         .filter((file) => includePattern.reduce((isMatch, pattern) => isMatch ? isMatch : Match(file.name, pattern), false))
-        .filter((file) => !excludePattern.reduce((isMatch, pattern) => isMatch ? isMatch : Match(file.name, pattern), false))
+        // .filter((file) => !excludePattern.reduce((isMatch, pattern) => isMatch ? isMatch : Match(file.name, pattern), false))
         .map((file) => this.createModuleFromPath(`${sourcePath}/${file.name}`, `${targetPath}/${Path.basename(file.name, Path.extname(file.name))}${Path.extname(FilePath)}`, option)))
     
-      return Promise.all(createModule)
+      return Promise.all(promise)
         
     } else {
 
@@ -192,12 +220,9 @@ class Transform {
       if (await FileSystem.pathExists(targetPath)) {
 
         let targetInformation = await FileSystem.stat(targetPath)
+        // console.log(`targetInformation.mtimeMs = ${targetInformation.mtimeMs}`)
 
-        // console.log(`Existing '${Path.relative('', targetPath)}' ...`)
-        // console.log(`Source ${sourceInformation.mtime}`)
-        // console.log(`Target ${targetInformation.mtime}`)
-
-        if (sourceInformation.mtime >= targetInformation.mtime) {
+        if (sourceInformation.mtimeMs >= targetInformation.mtimeMs) {
           isCreated = true
         }
 
@@ -211,14 +236,12 @@ class Transform {
         source = await this.getModuleSourceFromPath(sourcePath, option)
         source = await this.formatSource(source, Path.extname(targetPath).toLowerCase() === '.cjs' ? 'commonjs' : 'esmodule')
 
-        // console.log(`Creating '${Path.relative('', targetPath)}' ...`)
-
         await FileSystem.ensureDir(Path.dirname(targetPath))
-        return FileSystem.writeFile(targetPath, source, { 'encoding': option.encoding, 'flag': option.flag })
-    
-      } else {
-        return Promise.resolve()
+        await FileSystem.writeFile(targetPath, source, { 'encoding': option.encoding, 'flag': option.flag })
+
       }
+
+      return targetPath
 
     }
 

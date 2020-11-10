@@ -11,13 +11,10 @@
       "autoAttachChildProcesses": false,
       "internalConsoleOptions": "openOnSessionStart",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/distributable-esmodule/command/transform.js",
+      "program": "${workspaceFolder}/distributable-esmodule/sandbox/importq.js",
       "skipFiles": [ "<node_internals>/**" ],
       "stopOnEntry": false,
-      "args": [
-        "create-module", "./source/test/command/resource/transform-00.pug",
-        "--flag", "wx"
-      ]
+      "args": []
     },
     {
       "type": "node",
